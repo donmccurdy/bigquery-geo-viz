@@ -18,12 +18,17 @@ import { Component, ElementRef, Input, NgZone, ViewChild, AfterViewInit } from '
 import { StylesService, StyleRule } from '../services/styles.service';
 import { GeoJsonLayer } from '@deck.gl/layers';
 import { GoogleMapsOverlay } from '@deck.gl/google-maps';
+import { ScenegraphLayer } from '@deck.gl/mesh-layers';
+import { registerLoaders } from '@loaders.gl/core';
+import { GLTFScenegraphLoader } from '@luma.gl/addons';
 import bbox from '@turf/bbox';
 import { GeoJSONService, GeoJSONFeature } from '../services/geojson.service';
 
 const LAYER_ID = 'geojson-layer';
 
 const INITIAL_VIEW_STATE = { latitude: 45, longitude: 0, zoom: 2, pitch: 0 };
+
+registerLoaders([GLTFScenegraphLoader]);
 
 @Component({
   selector: 'app-map',
@@ -151,35 +156,48 @@ export class MapComponent implements AfterViewInit {
     // Remove old features.
     this._deckLayer.setProps({ layers: [] });
 
-    // Create GeoJSON layer.
-    const colorRe = /(\d+), (\d+), (\d+)/;
-    const layer = new GeoJsonLayer({
+    const layer = new ScenegraphLayer({
       id: LAYER_ID,
       data: this._features,
-      pickable: true,
-      autoHighlight: true,
-      highlightColor: [219, 68, 55], // #DB4437
-      stroked: this.hasStroke(),
-      filled: true,
-      extruded: false,
-      elevationScale: 0,
-      lineWidthUnits: 'pixels',
-      pointRadiusMinPixels: 1,
-      getFillColor: (d) => {
-        let color = this.getStyle(d, this._styles, 'fillColor');
-        if (typeof color === 'string') color = color.match(colorRe).slice(1, 4).map(Number);
-        const opacity = this.getStyle(d, this._styles, 'fillOpacity');
-        return [...color, opacity * 256];
+      getPosition: (d) => d.geometry.coordinates,
+      getOrientation: () => [0, Math.random() * 360, 90],
+      getScale: () => {
+        const scale = Math.random() * 0.5 + 0.75;
+        return [scale, scale, scale];
       },
-      getLineColor: (d) => {
-        let color = this.getStyle(d, this._styles, 'strokeColor');
-        if (typeof color === 'string') color = color.match(colorRe).slice(1, 4).map(Number);
-        const opacity = this.getStyle(d, this._styles, 'strokeOpacity');
-        return [...color, opacity * 256];
-      },
-      getLineWidth: (d) => this.getStyle(d, this._styles, 'strokeWeight'),
-      getRadius: (d) => this.getStyle(d, this._styles, 'circleRadius'),
+      getColor: () => [Math.random() * 55 + 225, Math.random() * 55 + 225, Math.random() * 55 + 225],
+      scenegraph: 'assets/models/elm.glb'
     });
+
+    // Create GeoJSON layer.
+    // const colorRe = /(\d+), (\d+), (\d+)/;
+    // const layer = new GeoJsonLayer({
+    //   id: LAYER_ID,
+    //   data: this._features,
+    //   pickable: true,
+    //   autoHighlight: true,
+    //   highlightColor: [219, 68, 55], // #DB4437
+    //   stroked: this.hasStroke(),
+    //   filled: true,
+    //   extruded: false,
+    //   elevationScale: 0,
+    //   lineWidthUnits: 'pixels',
+    //   pointRadiusMinPixels: 1,
+    //   getFillColor: (d) => {
+    //     let color = this.getStyle(d, this._styles, 'fillColor');
+    //     if (typeof color === 'string') color = color.match(colorRe).slice(1, 4).map(Number);
+    //     const opacity = this.getStyle(d, this._styles, 'fillOpacity');
+    //     return [...color, opacity * 256];
+    //   },
+    //   getLineColor: (d) => {
+    //     let color = this.getStyle(d, this._styles, 'strokeColor');
+    //     if (typeof color === 'string') color = color.match(colorRe).slice(1, 4).map(Number);
+    //     const opacity = this.getStyle(d, this._styles, 'strokeOpacity');
+    //     return [...color, opacity * 256];
+    //   },
+    //   getLineWidth: (d) => this.getStyle(d, this._styles, 'strokeWeight'),
+    //   getRadius: (d) => this.getStyle(d, this._styles, 'circleRadius'),
+    // });
 
     this._deckLayer.setProps({ layers: [layer] });
   }
